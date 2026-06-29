@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const videoId = getYouTubeVideoId(proj.url);
           let mediaHtml = '';
           if (videoId) {
-            mediaHtml = `<iframe src="https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&controls=1" title="${proj.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            mediaHtml = `<iframe id="yt-player-${index}" src="https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&controls=1&enablejsapi=1" title="${proj.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
           } else {
             mediaHtml = `<img src="images/project-branding.jpg" alt="${proj.title}" loading="lazy">`;
           }
@@ -498,6 +498,38 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
           projectsGrid.appendChild(card);
         });
+
+        // Initialize YouTube Iframe API for auto-pausing other videos
+        const ytPlayers = [];
+        const initYTPlayers = () => {
+          const iframes = projectsGrid.querySelectorAll('iframe[id^="yt-player-"]');
+          iframes.forEach((iframe) => {
+            const player = new YT.Player(iframe.id, {
+              events: {
+                'onStateChange': (event) => {
+                  if (event.data === YT.PlayerState.PLAYING) {
+                    ytPlayers.forEach((otherPlayer) => {
+                      if (otherPlayer !== player && typeof otherPlayer.pauseVideo === 'function') {
+                        otherPlayer.pauseVideo();
+                      }
+                    });
+                  }
+                }
+              }
+            });
+            ytPlayers.push(player);
+          });
+        };
+
+        if (window.YT && window.YT.Player) {
+          initYTPlayers();
+        } else {
+          window.onYouTubeIframeAPIReady = initYTPlayers;
+          const tag = document.createElement('script');
+          tag.src = 'https://www.youtube.com/iframe_api';
+          const firstScriptTag = document.getElementsByTagName('script')[0];
+          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        }
       }
     } catch (err) {
       console.log('Google Sheets load error (using fallback static projects):', err);
